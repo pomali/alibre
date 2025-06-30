@@ -1,9 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules>
+    <!--
+        This file defines rules for data extraction for backup and transfer.
+        We will configure this more specifically later if needed.
+        For now, similar to backup_rules, exclude common locations by default.
+    -->
     <cloud-backup>
-        <!-- TODO: Define cloud backup rules for your app -->
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="external" path="."/>
+        <exclude domain="root" path="." />
+        <!-- Example: <include domain="sharedpref" path="alibre_settings.xml"/> -->
     </cloud-backup>
     <device-transfer>
-        <!-- TODO: Define device transfer rules for your app -->
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="external" path="."/>
+        <exclude domain="root" path="." />
+        <!-- Example: <include domain="sharedpref" path="alibre_settings.xml"/> -->
     </device-transfer>
 </data-extraction-rules>

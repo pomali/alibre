@@ -1,4 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
-    <!-- TODO: Define backup rules for your app -->
+    <!-- We will configure this more specifically later if needed.
+         For now, exclude common locations to avoid backing up potentially large book files
+         or sensitive user data by default.
+    -->
+    <exclude domain="database" path="." />
+    <exclude domain="sharedpref" path="." /> <!-- We might want to include some preferences later -->
+    <exclude domain="file" path="." /> <!-- Excludes files saved to internal storage -->
+    <exclude domain="external" path="."/> <!-- Excludes files saved to external storage -->
+    <exclude domain="root" path="." />
+
+    <!-- Example of including specific shared preferences:
+    <include domain="sharedpref" path="alibre_settings.xml"/>
+    -->
 </full-backup-content>
