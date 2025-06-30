@@ -1,0 +1,123 @@
+# Gradle files
+.gradle/
+build/
+captures/
+.idea/
+*.iml
+local.properties
+
+# Android Studio files
+*.apk
+*.ap_
+*.aab
+*.aar
+*.dex
+*.class
+
+# Kotlin files
+*.kt.jar
+
+# Proguard files
+proguard/
+
+# Keystore files
+*.jks
+*.keystore
+
+# Log files
+*.log
+
+# Android Studio local run files
+.DS_Store
+*/.DS_Store
+derived_data/
+.externalNativeBuild/
+*~
+*.swp
+*.swo
+.cxx/
+app/build
+app/release
+app/debug
+xcuserdata/
+gen/
+out/
+hs_err_pid*
+*.bak
+*.orig
+*.stackdump
+
+# Specific to Android Studio's new UI
+.idea/deployment.xml
+.idea/libraries/
+.idea/navEditor.xml
+.idea/assetWizardSettings.xml
+
+# Detekt
+detekt-reports/
+
+# Kover
+kover/
+
+# Navigation
+*.navgraph.xml.orig
+
+# Google services
+google-services.json
+app/google-services.json
+
+# Firebase
+firebase.json
+app/firebase.json
+firebase_crashlytics_upload_symbols*
+firebase_app_distribution_build_ids*
+
+# Sentry
+sentry.properties
+
+# Secrets
+secrets.properties
+app/secrets.properties
+
+# Environment variables
+.env
+.env.*
+
+# Test reports
+test-results/
+androidTest-results/
+
+# Android Profiler
+*.hprof
+*.snapshot
+*.trace
+*.gcstat
+captures/
+
+# Lint
+lint-results*.xml
+lint-results*.html
+lint-results*.txt
+
+# Checkstyle
+checkstyle/reports/
+
+# PMD
+pmd/reports/
+
+# Spotbugs
+spotbugs/reports/
+
+# Jacoco
+jacoco/
+
+# SonarQube
+.scannerwork/
+sonar-project.properties
+
+# Mockito
+.mockito/
+mockito-extensions/
+
+# Robolectric
+robolectric-reports/

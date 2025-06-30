@@ -1,0 +1,42 @@
+name: Android CI Build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "*" ] # Triggers on PRs to any branch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin' # Popular open-source distribution of OpenJDK
+
+    - name: Set up Gradle
+      uses: gradle/gradle-build-action@v2 # More specific action for Gradle
+      with:
+        gradle-version: wrapper # Use the version defined in gradle-wrapper.properties
+        # cache-read-only: ${{ github.ref != 'refs/heads/main' }} # Example: only write to cache on main branch builds
+
+    - name: Make gradlew executable
+      run: chmod +x ./gradlew
+
+    - name: Build with Gradle
+      run: ./gradlew build # Runs all checks, tests, and builds debug/release variants
+
+    # Optional: Upload build artifacts (e.g., APK)
+     - name: Upload Debug APK
+       uses: actions/upload-artifact@v3
+       with:
+         name: app-debug-apk
+         path: app/build/outputs/apk/debug/app-debug.apk
+         if-no-files-found: error # Fails the step if the APK is not found
+
