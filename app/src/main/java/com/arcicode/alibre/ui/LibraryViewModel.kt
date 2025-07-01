@@ -82,4 +82,16 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     suspend fun getLibraryFolderByPath(path: String): LibraryFolder? {
         return libraryFolderDao.getLibraryFolderByPath(path)
     }
+    
+    fun removeLibraryFolder(folder: LibraryFolder) {
+        viewModelScope.launch {
+            try {
+                libraryFolderDao.removeLibraryFolder(folder)
+                // Also remove books from this folder
+                bookDao.deleteBooksByFolderPath(folder.path)
+            } catch (e: Exception) {
+                _error.value = "Failed to remove library folder: ${e.message}"
+            }
+        }
+    }
 }

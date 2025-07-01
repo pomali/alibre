@@ -36,5 +36,8 @@ interface BookDao {
 
     @Query("SELECT filePath FROM books")
     suspend fun getAllBookFilePaths(): List<String>
+
+    @Query("DELETE FROM books WHERE filePath LIKE :folderPath || '%'")
+    suspend fun deleteBooksByFolderPath(folderPath: String)
 }
 

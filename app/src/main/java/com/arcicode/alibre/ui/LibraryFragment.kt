@@ -28,6 +28,7 @@ class LibraryFragment : Fragment() {
 
     private lateinit var viewModel: LibraryViewModel
     private lateinit var booksAdapter: BooksAdapter
+    private lateinit var foldersAdapter: LibraryFoldersAdapter
 
     private val openDocumentTreeLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
@@ -80,6 +81,15 @@ class LibraryFragment : Fragment() {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = booksAdapter
         }
+        
+        foldersAdapter = LibraryFoldersAdapter { folder ->
+            onRemoveFolderClicked(folder)
+        }
+        
+        binding.recyclerViewFolders.apply {
+            layoutManager = LinearLayoutManager(requireContext())
+            adapter = foldersAdapter
+        }
     }
 
     private fun observeViewModel() {
@@ -93,6 +103,19 @@ class LibraryFragment : Fragment() {
             } else {
                 binding.recyclerViewBooks.visibility = View.VISIBLE
                 binding.textViewEmptyState.visibility = View.GONE
+            }
+        }
+        
+        viewModel.allLibraryFolders.observe(viewLifecycleOwner) { folders ->
+            foldersAdapter.submitList(folders)
+            
+            // Show/hide folders empty state
+            if (folders.isEmpty()) {
+                binding.recyclerViewFolders.visibility = View.GONE
+                binding.textViewFoldersEmpty.visibility = View.VISIBLE
+            } else {
+                binding.recyclerViewFolders.visibility = View.VISIBLE
+                binding.textViewFoldersEmpty.visibility = View.GONE
             }
         }
 
@@ -118,6 +141,19 @@ class LibraryFragment : Fragment() {
             putLong("bookId", book.id)
         }
         findNavController().navigate(R.id.action_libraryFragment_to_readingFragment, bundle)
+    }
+    
+    private fun onRemoveFolderClicked(folder: LibraryFolder) {
+        // Show confirmation dialog
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("Remove Folder")
+            .setMessage("Are you sure you want to remove this folder from your library?\n\nThis will:\n• Remove the folder from your library\n• Remove all books from this folder from your library\n• NOT delete the actual files on your device")
+            .setPositiveButton("Remove") { _, _ ->
+                viewModel.removeLibraryFolder(folder)
+                Toast.makeText(requireContext(), "Folder and its books removed from library", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun openFolderPicker() {

@@ -1,0 +1,1 @@
+To run gradle commands use Java 17 `JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home`

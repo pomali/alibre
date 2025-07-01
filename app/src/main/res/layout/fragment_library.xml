@@ -17,11 +17,65 @@
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginTop="16dp"/>
 
+    <!-- Folders Section -->
+    <TextView
+        android:id="@+id/textView_folders_title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Library Folders"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        app:layout_constraintTop_toBottomOf="@id/textView_library_title"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerView_folders"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:maxHeight="200dp"
+        app:layout_constraintTop_toBottomOf="@id/textView_folders_title"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="8dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"/>
+
+    <TextView
+        android:id="@+id/textView_folders_empty"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="No folders added yet. Tap 'Add Folder' to get started!"
+        android:textSize="14sp"
+        android:textAlignment="center"
+        android:textColor="@android:color/darker_gray"
+        android:padding="16dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/textView_folders_title"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <!-- Books Section -->
+    <TextView
+        android:id="@+id/textView_books_title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Books"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        app:layout_constraintTop_toBottomOf="@id/recyclerView_folders"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerView_books"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        app:layout_constraintTop_toBottomOf="@id/textView_library_title"
+        app:layout_constraintTop_toBottomOf="@id/textView_books_title"
         app:layout_constraintBottom_toTopOf="@+id/button_add_folder"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -33,7 +87,7 @@
         android:id="@+id/textView_empty_state"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="No books in your library yet.\nTap 'Add Folder' to get started!"
+        android:text="No books found in your library folders."
         android:textSize="16sp"
         android:textAlignment="center"
         android:textColor="@android:color/darker_gray"
