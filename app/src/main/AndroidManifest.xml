@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_MEDIA_DOCUMENTS" />
 
     <application
         android:name="com.arcicode.alibre.EBookReaderApplication"
@@ -26,4 +27,3 @@
     </application>
 
 </manifest>
-

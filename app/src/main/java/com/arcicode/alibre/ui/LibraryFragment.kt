@@ -4,20 +4,21 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-// import android.provider.DocumentsContract // Not strictly needed for this version
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
-// import androidx.navigation.fragment.findNavController // Not used yet
-import com.arcicode.alibre.EBookReaderApplication // Updated import
-// import com.arcicode.alibre.R // Not strictly needed for this version of file, will be used later
-import com.arcicode.alibre.databinding.FragmentLibraryBinding // Updated import
-import com.arcicode.alibre.db.LibraryFolderDao // Updated import
-import com.arcicode.alibre.model.LibraryFolder // Updated import
+import androidx.navigation.fragment.findNavController
+import androidx.recyclerview.widget.LinearLayoutManager
+import com.arcicode.alibre.R
+import com.arcicode.alibre.databinding.FragmentLibraryBinding
+import com.arcicode.alibre.model.Book
+import com.arcicode.alibre.model.LibraryFolder
+import com.arcicode.alibre.utils.FileScanner
 import kotlinx.coroutines.launch
 
 class LibraryFragment : Fragment() {
@@ -25,7 +26,8 @@ class LibraryFragment : Fragment() {
     private var _binding: FragmentLibraryBinding? = null
     private val binding get() = _binding!!
 
-    private lateinit var libraryFolderDao: LibraryFolderDao
+    private lateinit var viewModel: LibraryViewModel
+    private lateinit var booksAdapter: BooksAdapter
 
     private val openDocumentTreeLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
@@ -36,7 +38,7 @@ class LibraryFragment : Fragment() {
                         uri,
                         Intent.FLAG_GRANT_READ_URI_PERMISSION
                     )
-                    saveLibraryFolder(uri)
+                    saveLibraryFolderAndScan(uri)
                 } catch (e: SecurityException) {
                     Toast.makeText(requireContext(), "Failed to persist folder permissions.", Toast.LENGTH_LONG).show()
                     e.printStackTrace()
@@ -47,8 +49,7 @@ class LibraryFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val application = requireActivity().application as EBookReaderApplication
-        libraryFolderDao = application.database.libraryFolderDao()
+        viewModel = ViewModelProvider(this)[LibraryViewModel::class.java]
     }
 
     override fun onCreateView(
@@ -62,14 +63,61 @@ class LibraryFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        setupRecyclerView()
+        observeViewModel()
+
         binding.buttonAddFolder.setOnClickListener {
             openFolderPicker()
         }
+    }
 
-        // TODO: Setup RecyclerView, Observe ViewModel data for library folders and books
-        // Example: binding.buttonNavigateToReader.setOnClickListener {
-        //     findNavController().navigate(R.id.action_libraryFragment_to_readingFragment)
-        // }
+    private fun setupRecyclerView() {
+        booksAdapter = BooksAdapter { book ->
+            onBookClicked(book)
+        }
+        
+        binding.recyclerViewBooks.apply {
+            layoutManager = LinearLayoutManager(requireContext())
+            adapter = booksAdapter
+        }
+    }
+
+    private fun observeViewModel() {
+        viewModel.allBooks.observe(viewLifecycleOwner) { books ->
+            booksAdapter.submitList(books)
+            
+            // Show/hide empty state
+            if (books.isEmpty()) {
+                binding.recyclerViewBooks.visibility = View.GONE
+                binding.textViewEmptyState.visibility = View.VISIBLE
+            } else {
+                binding.recyclerViewBooks.visibility = View.VISIBLE
+                binding.textViewEmptyState.visibility = View.GONE
+            }
+        }
+
+        viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
+            binding.progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
+        }
+
+        viewModel.error.observe(viewLifecycleOwner) { error ->
+            error?.let {
+                Toast.makeText(requireContext(), it, Toast.LENGTH_LONG).show()
+                viewModel.clearError()
+            }
+        }
+    }
+
+    private fun onBookClicked(book: Book) {
+        // Update last opened timestamp
+        viewModel.updateBookLastOpened(book)
+        
+        // Navigate to reading fragment
+        val bundle = Bundle().apply {
+            putString("bookPath", book.filePath)
+            putLong("bookId", book.id)
+        }
+        findNavController().navigate(R.id.action_libraryFragment_to_readingFragment, bundle)
     }
 
     private fun openFolderPicker() {
@@ -77,14 +125,30 @@ class LibraryFragment : Fragment() {
         openDocumentTreeLauncher.launch(intent)
     }
 
-    private fun saveLibraryFolder(uri: Uri) {
+    private fun saveLibraryFolderAndScan(uri: Uri) {
         val folderPath = uri.toString()
         lifecycleScope.launch {
-            val existingFolder = libraryFolderDao.getLibraryFolderByPath(folderPath)
+            val existingFolder = viewModel.getLibraryFolderByPath(folderPath)
             if (existingFolder == null) {
-                libraryFolderDao.addLibraryFolder(LibraryFolder(path = folderPath))
-                Toast.makeText(requireContext(), "Folder added: $folderPath", Toast.LENGTH_SHORT).show()
-                // TODO: Trigger scan for books in this folder
+                // Add folder to database
+                viewModel.addLibraryFolder(LibraryFolder(path = folderPath))
+                
+                // Show scanning message
+                Toast.makeText(requireContext(), "Scanning folder for ebooks...", Toast.LENGTH_SHORT).show()
+                
+                // Scan folder for books
+                try {
+                    val books = FileScanner.scanFolderForBooks(requireContext(), uri)
+                    if (books.isNotEmpty()) {
+                        viewModel.addBooks(books)
+                        Toast.makeText(requireContext(), "Found ${books.size} ebook(s)", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(requireContext(), "No ebooks found in this folder", Toast.LENGTH_SHORT).show()
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(requireContext(), "Error scanning folder: ${e.message}", Toast.LENGTH_LONG).show()
+                    e.printStackTrace()
+                }
             } else {
                 Toast.makeText(requireContext(), "Folder already in library.", Toast.LENGTH_SHORT).show()
             }
