@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
@@ -23,6 +24,8 @@ import kotlinx.coroutines.launch
 
 class LibraryFragment : Fragment() {
 
+    private val TAG = "LibraryFragment"
+
     private var _binding: FragmentLibraryBinding? = null
     private val binding get() = _binding!!
 
@@ -39,7 +42,7 @@ class LibraryFragment : Fragment() {
                         uri,
                         Intent.FLAG_GRANT_READ_URI_PERMISSION
                     )
-                    saveLibraryFolderAndScan(uri)
+                    saveLibraryFolderAndScan(uri)   
                 } catch (e: SecurityException) {
                     Toast.makeText(requireContext(), "Failed to persist folder permissions.", Toast.LENGTH_LONG).show()
                     e.printStackTrace()
@@ -69,6 +72,12 @@ class LibraryFragment : Fragment() {
 
         binding.buttonAddFolder.setOnClickListener {
             openFolderPicker()
+        }
+        
+        binding.buttonRescan.setOnClickListener {
+            Log.d(TAG, "Rescan button clicked")
+            viewModel.rescanAllLibraryFolders()
+            Toast.makeText(requireContext(), "Rescanning library folders...", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -163,9 +172,12 @@ class LibraryFragment : Fragment() {
 
     private fun saveLibraryFolderAndScan(uri: Uri) {
         val folderPath = uri.toString()
+        Log.d(TAG, "Starting folder scan for: $folderPath")
+        
         lifecycleScope.launch {
             val existingFolder = viewModel.getLibraryFolderByPath(folderPath)
             if (existingFolder == null) {
+                Log.d(TAG, "Adding new folder to database")
                 // Add folder to database
                 viewModel.addLibraryFolder(LibraryFolder(path = folderPath))
                 
@@ -174,18 +186,32 @@ class LibraryFragment : Fragment() {
                 
                 // Scan folder for books
                 try {
+                    Log.d(TAG, "Testing URI permissions first")
+                    if (!FileScanner.testUriPermissions(requireContext(), uri)) {
+                        Log.e(TAG, "URI permissions test failed")
+                        Toast.makeText(requireContext(), "Unable to access folder. Please try selecting the folder again.", Toast.LENGTH_LONG).show()
+                        return@launch
+                    }
+                    
+                    Log.d(TAG, "Starting FileScanner.scanFolderForBooks")
                     val books = FileScanner.scanFolderForBooks(requireContext(), uri)
+                    Log.d(TAG, "FileScanner returned ${books.size} books")
+                    
                     if (books.isNotEmpty()) {
+                        Log.d(TAG, "Adding ${books.size} books to ViewModel")
                         viewModel.addBooks(books)
                         Toast.makeText(requireContext(), "Found ${books.size} ebook(s)", Toast.LENGTH_SHORT).show()
                     } else {
+                        Log.w(TAG, "No books found in folder")
                         Toast.makeText(requireContext(), "No ebooks found in this folder", Toast.LENGTH_SHORT).show()
                     }
                 } catch (e: Exception) {
+                    Log.e(TAG, "Error scanning folder", e)
                     Toast.makeText(requireContext(), "Error scanning folder: ${e.message}", Toast.LENGTH_LONG).show()
                     e.printStackTrace()
                 }
             } else {
+                Log.d(TAG, "Folder already exists in library")
                 Toast.makeText(requireContext(), "Folder already in library.", Toast.LENGTH_SHORT).show()
             }
         }

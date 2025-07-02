@@ -1,6 +1,8 @@
 package com.arcicode.alibre.ui
 
 import android.app.Application
+import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -13,6 +15,8 @@ import com.arcicode.alibre.model.LibraryFolder
 import kotlinx.coroutines.launch
 
 class LibraryViewModel(application: Application) : AndroidViewModel(application) {
+    
+    private val TAG = "LibraryViewModel"
     
     private val bookDao: BookDao
     private val libraryFolderDao: LibraryFolderDao
@@ -49,14 +53,22 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             try {
                 _isLoading.value = true
+                Log.d(TAG, "Adding ${books.size} books to database")
+                
                 books.forEach { book ->
+                    Log.d(TAG, "Processing book: ${book.title} at ${book.filePath}")
                     // Check if book already exists by file path
                     val existingBook = bookDao.getBookByFilePath(book.filePath)
                     if (existingBook == null) {
+                        Log.d(TAG, "Inserting new book: ${book.title}")
                         bookDao.insertBook(book)
+                    } else {
+                        Log.d(TAG, "Book already exists, skipping: ${book.title}")
                     }
                 }
+                Log.d(TAG, "Finished adding books")
             } catch (e: Exception) {
+                Log.e(TAG, "Failed to add books", e)
                 _error.value = "Failed to add books: ${e.message}"
             } finally {
                 _isLoading.value = false
@@ -91,6 +103,48 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
                 bookDao.deleteBooksByFolderPath(folder.path)
             } catch (e: Exception) {
                 _error.value = "Failed to remove library folder: ${e.message}"
+            }
+        }
+    }
+    
+    fun rescanAllLibraryFolders() {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                Log.d(TAG, "Starting rescan of all library folders")
+                
+                val folders = libraryFolderDao.getAllLibraryFolders().value ?: emptyList()
+                Log.d(TAG, "Found ${folders.size} library folders to rescan")
+                
+                val allBooks = mutableListOf<Book>()
+                val context = getApplication<Application>()
+                
+                for (folder in folders) {
+                    try {
+                        Log.d(TAG, "Rescanning folder: ${folder.path}")
+                        val uri = Uri.parse(folder.path)
+                        val books = com.arcicode.alibre.utils.FileScanner.scanFolderForBooks(context, uri)
+                        Log.d(TAG, "Found ${books.size} books in folder: ${folder.path}")
+                        allBooks.addAll(books)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error rescanning folder: ${folder.path}", e)
+                        _error.value = "Error rescanning folder: ${e.message}"
+                    }
+                }
+                
+                // Clear existing books and add all found books
+                bookDao.deleteAllBooks()
+                allBooks.forEach { book ->
+                    bookDao.insertBook(book)
+                }
+                
+                Log.d(TAG, "Rescan completed. Total books found: ${allBooks.size}")
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "Error during library rescan", e)
+                _error.value = "Failed to rescan library: ${e.message}"
+            } finally {
+                _isLoading.value = false
             }
         }
     }
