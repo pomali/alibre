@@ -148,18 +148,66 @@ object FileScanner {
     fun testUriPermissions(context: Context, uri: Uri): Boolean {
         return try {
             val contentResolver = context.contentResolver
+            
+            // First, check if we have persistent permissions
+            val persistedUriPermissions = contentResolver.persistedUriPermissions
+            var hasPersistedPermission = false
+            
+            for (uriPermission in persistedUriPermissions) {
+                if (uriPermission.uri == uri && uriPermission.isReadPermission) {
+                    hasPersistedPermission = true
+                    Log.d(TAG, "Found persistent permission for URI: $uri")
+                    break
+                }
+            }
+            
+            if (!hasPersistedPermission) {
+                Log.w(TAG, "No persistent permission found for URI: $uri")
+                return false
+            }
+            
+            // Test actual access by trying to query the URI
+            val treeDocumentId = DocumentsContract.getTreeDocumentId(uri)
+            val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(uri, treeDocumentId)
+            
             val cursor = contentResolver.query(
-                uri,
+                childrenUri,
                 arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID),
                 null,
                 null,
                 null
             )
-            cursor?.use { true } ?: false
+            
+            val result = cursor?.use { true } ?: false
+            Log.d(TAG, "URI permission test result for $uri: $result")
+            return result
+        } catch (e: SecurityException) {
+            Log.e(TAG, "SecurityException - URI permission test failed for $uri", e)
+            false
         } catch (e: Exception) {
             Log.e(TAG, "URI permission test failed for $uri", e)
             false
         }
+    }
+    
+    /**
+     * Lists all persistent URI permissions that the app currently has
+     */
+    fun listPersistentPermissions(context: Context): List<String> {
+        val contentResolver = context.contentResolver
+        val persistedUriPermissions = contentResolver.persistedUriPermissions
+        val permissionsList = mutableListOf<String>()
+        
+        for (uriPermission in persistedUriPermissions) {
+            val permissions = mutableListOf<String>()
+            if (uriPermission.isReadPermission) permissions.add("READ")
+            if (uriPermission.isWritePermission) permissions.add("WRITE")
+            
+            permissionsList.add("${uriPermission.uri} - ${permissions.joinToString(", ")}")
+            Log.d(TAG, "Persistent permission: ${uriPermission.uri} - ${permissions.joinToString(", ")}")
+        }
+        
+        return permissionsList
     }
     
     private fun createBookFromFile(filePath: String, fileName: String, format: String): Book {

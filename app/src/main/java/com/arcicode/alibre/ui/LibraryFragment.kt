@@ -38,12 +38,13 @@ class LibraryFragment : Fragment() {
             result.data?.data?.also { uri ->
                 val contentResolver = requireActivity().contentResolver
                 try {
-                    contentResolver.takePersistableUriPermission(
-                        uri,
-                        Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    )
+                    // Take both read and write permissions to ensure full access
+                    val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                    contentResolver.takePersistableUriPermission(uri, takeFlags)
+                    Log.d(TAG, "Successfully obtained persistent permissions for: $uri")
                     saveLibraryFolderAndScan(uri)   
                 } catch (e: SecurityException) {
+                    Log.e(TAG, "Failed to persist folder permissions for: $uri", e)
                     Toast.makeText(requireContext(), "Failed to persist folder permissions.", Toast.LENGTH_LONG).show()
                     e.printStackTrace()
                 }
@@ -225,6 +226,12 @@ class LibraryFragment : Fragment() {
                     Log.d(TAG, "Testing URI permissions first")
                     if (!FileScanner.testUriPermissions(requireContext(), uri)) {
                         Log.e(TAG, "URI permissions test failed")
+                        
+                        // Log current persistent permissions for debugging
+                        val permissions = FileScanner.listPersistentPermissions(requireContext())
+                        Log.d(TAG, "Current persistent permissions:")
+                        permissions.forEach { Log.d(TAG, "  $it") }
+                        
                         Toast.makeText(requireContext(), "Unable to access folder. Please try selecting the folder again.", Toast.LENGTH_LONG).show()
                         return@launch
                     }
@@ -241,6 +248,9 @@ class LibraryFragment : Fragment() {
                         Log.w(TAG, "No books found in folder")
                         Toast.makeText(requireContext(), "No ebooks found in this folder", Toast.LENGTH_SHORT).show()
                     }
+                } catch (e: SecurityException) {
+                    Log.e(TAG, "SecurityException during folder scan", e)
+                    Toast.makeText(requireContext(), "Permission denied accessing folder. The app may have lost access. Please try selecting the folder again.", Toast.LENGTH_LONG).show()
                 } catch (e: Exception) {
                     Log.e(TAG, "Error scanning folder", e)
                     Toast.makeText(requireContext(), "Error scanning folder: ${e.message}", Toast.LENGTH_LONG).show()
