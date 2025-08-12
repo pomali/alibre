@@ -30,6 +30,9 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     private val _error = MutableLiveData<String?>()
     val error: LiveData<String?> = _error
     
+    private val _successMessage = MutableLiveData<String?>()
+    val successMessage: LiveData<String?> = _successMessage
+    
     init {
         val database = (application as EBookReaderApplication).database
         bookDao = database.bookDao()
@@ -91,6 +94,10 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
         _error.value = null
     }
     
+    fun clearSuccessMessage() {
+        _successMessage.value = null
+    }
+    
     suspend fun getLibraryFolderByPath(path: String): LibraryFolder? {
         return libraryFolderDao.getLibraryFolderByPath(path)
     }
@@ -113,32 +120,88 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
                 _isLoading.value = true
                 Log.d(TAG, "Starting rescan of all library folders")
                 
-                val folders = libraryFolderDao.getAllLibraryFolders().value ?: emptyList()
+                val folders = libraryFolderDao.getAllLibraryFoldersSync()
                 Log.d(TAG, "Found ${folders.size} library folders to rescan")
+                
+                if (folders.isEmpty()) {
+                    Log.w(TAG, "No library folders found to rescan")
+                    _error.value = "No library folders found. Please use 'Add Folder' to add ebook folders to your library."
+                    return@launch
+                }
                 
                 val allBooks = mutableListOf<Book>()
                 val context = getApplication<Application>()
+                
+                val failedFolders = mutableListOf<String>()
                 
                 for (folder in folders) {
                     try {
                         Log.d(TAG, "Rescanning folder: ${folder.path}")
                         val uri = Uri.parse(folder.path)
+                        
+                        // Test permissions first
+                        if (!com.arcicode.alibre.utils.FileScanner.testUriPermissions(context, uri)) {
+                            Log.e(TAG, "URI permissions test failed for folder: ${folder.path}")
+                            failedFolders.add(folder.path)
+                            continue
+                        }
+                        
                         val books = com.arcicode.alibre.utils.FileScanner.scanFolderForBooks(context, uri)
                         Log.d(TAG, "Found ${books.size} books in folder: ${folder.path}")
                         allBooks.addAll(books)
                     } catch (e: Exception) {
                         Log.e(TAG, "Error rescanning folder: ${folder.path}", e)
-                        _error.value = "Error rescanning folder: ${e.message}"
+                        failedFolders.add(folder.path)
                     }
                 }
                 
+                // Handle failed folders
+                if (failedFolders.isNotEmpty()) {
+                    val failedCount = failedFolders.size
+                    val totalCount = folders.size
+                    Log.w(TAG, "Failed to access $failedCount out of $totalCount folders")
+                    
+                    if (failedCount == totalCount) {
+                        // All folders failed
+                        _error.value = "Unable to access any library folders. The app may have lost folder permissions. Please use 'Add Folder' to re-grant access to your library folders."
+                        return@launch
+                    } else {
+                        // Some folders failed
+                        _error.value = "Unable to access $failedCount out of $totalCount library folders. Use 'Add Folder' to re-grant access to inaccessible folders."
+                    }
+                }
+                
+                Log.d(TAG, "Total books found across all folders: ${allBooks.size}")
+                
                 // Clear existing books and add all found books
+                Log.d(TAG, "Clearing existing books from database")
                 bookDao.deleteAllBooks()
+                
+                Log.d(TAG, "Adding ${allBooks.size} books to database")
                 allBooks.forEach { book ->
+                    Log.d(TAG, "Inserting book: ${book.title} (${book.filePath})")
                     bookDao.insertBook(book)
                 }
                 
                 Log.d(TAG, "Rescan completed. Total books found: ${allBooks.size}")
+                
+                // Provide appropriate success/completion message
+                if (failedFolders.isEmpty()) {
+                    // All folders scanned successfully
+                    if (allBooks.isNotEmpty()) {
+                        _successMessage.value = "Rescan completed! Found ${allBooks.size} book(s)"
+                    } else {
+                        _successMessage.value = "Rescan completed. No books found in library folders."
+                    }
+                } else {
+                    // Some folders failed, but we still found some books
+                    val successfulCount = folders.size - failedFolders.size
+                    if (allBooks.isNotEmpty()) {
+                        _successMessage.value = "Partial rescan completed! Found ${allBooks.size} book(s) from $successfulCount accessible folder(s)"
+                    } else {
+                        _successMessage.value = "Rescan completed from $successfulCount accessible folder(s). No books found."
+                    }
+                }
                 
             } catch (e: Exception) {
                 Log.e(TAG, "Error during library rescan", e)
@@ -147,5 +210,32 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
                 _isLoading.value = false
             }
         }
+    }
+    
+    /**
+     * Check which library folders are currently accessible
+     * Returns a pair of (accessible folders, inaccessible folders)
+     */
+    suspend fun checkFolderAccessibility(): Pair<List<LibraryFolder>, List<LibraryFolder>> {
+        val allFolders = libraryFolderDao.getAllLibraryFoldersSync()
+        val accessibleFolders = mutableListOf<LibraryFolder>()
+        val inaccessibleFolders = mutableListOf<LibraryFolder>()
+        val context = getApplication<Application>()
+        
+        for (folder in allFolders) {
+            try {
+                val uri = Uri.parse(folder.path)
+                if (com.arcicode.alibre.utils.FileScanner.testUriPermissions(context, uri)) {
+                    accessibleFolders.add(folder)
+                } else {
+                    inaccessibleFolders.add(folder)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error checking accessibility for folder: ${folder.path}", e)
+                inaccessibleFolders.add(folder)
+            }
+        }
+        
+        return Pair(accessibleFolders, inaccessibleFolders)
     }
 }

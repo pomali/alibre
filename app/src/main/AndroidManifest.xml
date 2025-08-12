@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <!-- READ_MEDIA_DOCUMENTS permission for accessing documents via Storage Access Framework -->
     <uses-permission android:name="android.permission.READ_MEDIA_DOCUMENTS" />
 
     <application

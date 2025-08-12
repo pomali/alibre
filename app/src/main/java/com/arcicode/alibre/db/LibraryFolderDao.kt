@@ -16,6 +16,9 @@ interface LibraryFolderDao {
     @Query("SELECT * FROM library_folders ORDER BY path ASC")
     fun getAllLibraryFolders(): LiveData<List<LibraryFolder>>
 
+    @Query("SELECT * FROM library_folders ORDER BY path ASC")
+    suspend fun getAllLibraryFoldersSync(): List<LibraryFolder>
+
     @Query("SELECT * FROM library_folders WHERE path = :path LIMIT 1")
     suspend fun getLibraryFolderByPath(path: String): LibraryFolder?
 }

@@ -27,6 +27,7 @@ object FileScanner {
         val books = mutableListOf<Book>()
         
         Log.d(TAG, "Starting scan for folder: $folderUri")
+        Log.d(TAG, "Supported formats: $SUPPORTED_FORMATS")
         
         try {
             scanDirectoryRecursively(context, folderUri, books)

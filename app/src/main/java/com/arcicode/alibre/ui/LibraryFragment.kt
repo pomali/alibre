@@ -69,6 +69,15 @@ class LibraryFragment : Fragment() {
 
         setupRecyclerView()
         observeViewModel()
+        
+        // Check folder accessibility when fragment loads
+        lifecycleScope.launch {
+            val (_, inaccessible) = viewModel.checkFolderAccessibility()
+            if (inaccessible.isNotEmpty()) {
+                Log.w(TAG, "Found ${inaccessible.size} inaccessible folder(s) on startup")
+                // Don't show a toast immediately, just log it. The user will see the issue when they try to rescan.
+            }
+        }
 
         binding.buttonAddFolder.setOnClickListener {
             openFolderPicker()
@@ -76,8 +85,28 @@ class LibraryFragment : Fragment() {
         
         binding.buttonRescan.setOnClickListener {
             Log.d(TAG, "Rescan button clicked")
-            viewModel.rescanAllLibraryFolders()
-            Toast.makeText(requireContext(), "Rescanning library folders...", Toast.LENGTH_SHORT).show()
+            
+            // Check folder accessibility first
+            lifecycleScope.launch {
+                val (accessible, inaccessible) = viewModel.checkFolderAccessibility()
+                
+                if (inaccessible.isNotEmpty() && accessible.isEmpty()) {
+                    // All folders are inaccessible
+                    Toast.makeText(requireContext(), 
+                        "All library folders are currently inaccessible. Please use 'Add Folder' to re-grant access.", 
+                        Toast.LENGTH_LONG).show()
+                    return@launch
+                } else if (inaccessible.isNotEmpty()) {
+                    // Some folders are inaccessible, warn user but proceed
+                    Toast.makeText(requireContext(), 
+                        "${inaccessible.size} folder(s) are currently inaccessible and will be skipped. Use 'Add Folder' to re-grant access if needed.", 
+                        Toast.LENGTH_LONG).show()
+                }
+                
+                // Proceed with rescan
+                viewModel.rescanAllLibraryFolders()
+                Toast.makeText(requireContext(), "Starting library rescan...", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -136,6 +165,13 @@ class LibraryFragment : Fragment() {
             error?.let {
                 Toast.makeText(requireContext(), it, Toast.LENGTH_LONG).show()
                 viewModel.clearError()
+            }
+        }
+        
+        viewModel.successMessage.observe(viewLifecycleOwner) { message ->
+            message?.let {
+                Toast.makeText(requireContext(), it, Toast.LENGTH_LONG).show()
+                viewModel.clearSuccessMessage()
             }
         }
     }
