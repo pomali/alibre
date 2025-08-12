@@ -181,12 +181,12 @@ class LibraryFragment : Fragment() {
         // Update last opened timestamp
         viewModel.updateBookLastOpened(book)
         
-        // Navigate to reading fragment
-        val bundle = Bundle().apply {
-            putString("bookPath", book.filePath)
-            putLong("bookId", book.id)
-        }
-        findNavController().navigate(R.id.action_libraryFragment_to_readingFragment, bundle)
+        // Navigate to reading fragment using Safe Args
+        val action = LibraryFragmentDirections.actionLibraryFragmentToReadingFragment(
+            bookPath = book.filePath,
+            bookId = book.id
+        )
+        findNavController().navigate(action)
     }
     
     private fun onRemoveFolderClicked(folder: LibraryFolder) {

@@ -19,6 +19,9 @@ interface BookDao {
     @Query("SELECT * FROM books WHERE id = :bookId")
     fun getBookById(bookId: Long): LiveData<Book?>
 
+    @Query("SELECT * FROM books WHERE id = :bookId")
+    suspend fun getBookByIdSync(bookId: Long): Book?
+
     @Query("SELECT * FROM books ORDER BY lastOpenedTimestamp DESC")
     fun getAllBooks(): LiveData<List<Book>>
 
